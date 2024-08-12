@@ -20,19 +20,86 @@ julia> using DividedDifferences
 
 julia> f(x) = DividedDifferences.custom_sign(x; fl=x->(x-1)/(x+1), fc=x->1.0, fr=x->0.0, a=1.); # returns a scalar
 
-julia> x = [0.9, 0.9, 1.1]
-3-element Vector{Float64}:
- 0.9
- 0.9
- 1.1
-
-julia> divided_difference(f, x) # returns the second order divided difference f[0.9, 0.9, 1.1]
--1.4542936288088644
+julia> divided_difference(f, 0.8, 0.8, 0.99, 1.01) # returns the third order divided difference f[0.8, 0.8, 0.99, 1.01]
+-5.486405741650227
 
 julia> g(x) = [sin(x + 1) cos(x - 1); exp(x) x^3] # returns an array
 
-julia> divided_difference(g, 1.0, 1.1) # returns the first order divided difference g[1.0, 1.1]
+julia> x = [1.0,1.1]
+2-element Vector{Float64}:
+ 1.0
+ 1.1
+
+julia> dd = divided_difference(g, x) # returns the first order divided difference g[1.0, 1.1]
 2×2 Matrix{Float64}:
  -0.460881  -0.0499583
   2.85884    3.31
+
+julia> out = similar(dd);
+
+julia> divided_difference!(out, g, x); # store the divided difference in out
+
+julia> out
+2×2 Matrix{Float64}:
+ -0.460881  -0.0499583
+  2.85884    3.31
+```
+
+DividedDifferences can still deal with the non-scalar functions:
+```julia
+julia> function f!(y, x)                   # non-scalar function, store the result in y
+	       fill!(y, zero(x))
+           y[1] = x
+           for i in 2:length(y)
+               y[i] = exp(x) * sin(y[i-1])
+           end
+           return nothing
+        end;
+
+julia> y = zeros(3,2)
+3×2 Matrix{Float64}:
+ 0.0  0.0
+ 0.0  0.0
+ 0.0  0.0
+
+julia> x = collect(0.9:0.1:1.1)
+3-element Vector{Float64}:
+ 0.9
+ 1.0
+ 1.1
+
+julia> dd = divided_difference(f!, y, x) # returns the second order divided difference  
+                                         # f![0.9, 1.0, 1.1] and stores f!(x[1]) in y
+3×2 Matrix{Float64}:
+   0.0       -3.58207
+   1.46488  -30.2503
+ -22.446    -89.8768
+
+julia> y
+3×2 Matrix{Float64}:
+ 0.9      1.82512
+ 1.92667  2.38049
+ 2.30549  1.69644
+
+julia> out = similar(dd);
+
+julia> fill!(y, 0.0);
+3×2 Matrix{Float64}:
+ 0.0  0.0
+ 0.0  0.0
+ 0.0  0.0
+
+julia> divided_difference!(out, f!, y, x); # stores divided difference in out and f!(x[1]) in y
+
+julia> out
+3×2 Matrix{Float64}:
+   0.0       -3.58207
+   1.46488  -30.2503
+ -22.446    -89.8768
+
+julia> y
+3×2 Matrix{Float64}:
+ 0.9      1.82512
+ 1.92667  2.38049
+ 2.30549  1.69644
 ```
