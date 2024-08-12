@@ -11,7 +11,7 @@ f_c(x) , \quad{\rm if}\,\, x= a\\
 f_r(x), \quad{\rm if}\,\, x>a\\
 \end{cases}
 ```
-by `DividedDifferences.custom_sign(x; fl::Function, fc::Function, fr::Function, a)`.
+by using `DividedDifferences.custom_sign(x; fl::Function, fc::Function, fr::Function, a)`.
 
 Here are some simple examples showing how to use the package: 
 ```julia
