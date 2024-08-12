@@ -4,12 +4,13 @@ DividedDifferences computes **divided differences** by manipulating the **divide
 
 Since the divided-difference table for a function `f` is an upper triangular matrix, DividedDifferences supports the Julia matrix functions (or any object composed of them). Additionally, DividedDifferences also supports the special functions which are definded with branches, such as sign function `sign` and Heaviside step function `DividedDifferences.heaviside`. Users can also customize branching functions with the form
 ```math
-F(x) = 
-\begin{cases}
+F(x) = \left\{
+\begin{aligned}
 &f_l(x), \quad&{\rm if}\,\, x< a\\
 &f_c(x), \quad&{\rm if}\,\, x= a\\
 &f_r(x), \quad&{\rm if}\,\, x>a\\
-\end{cases}
+\end{aligned}
+\right.
 ```
 by using `DividedDifferences.custom_sign(x; fl::Function, fc::Function, fr::Function, a)`.
 
