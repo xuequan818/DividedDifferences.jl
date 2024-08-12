@@ -175,29 +175,30 @@ end
 @inline ^(x::FiniteDual, y::FiniteDual) = exp(y * log(x))
 
 # custom functions defined by sign rule #
-# custom_sign(x) = fl(x) if x < 0.0;    #
-#                  fc(x) if x = 0.0;    #
-#                  fr(x) if x > 0.0.    #
+# custom_sign(x) = fl(x) if x < a;    #
+#                  fc(x) if x = a;    #
+#                  fr(x) if x > a.    #
 #---------------------------------------#
 
-@inline function custom_sign(x::FiniteDual{T}, fl::FL, 
-                            fc::FC, fr::FR) where {T,FL,FC,FR}
+@inline function custom_sign(x::FiniteDual{T}; 
+                             fl::FL, fc::FC, fr::FR,
+                             a=0.0) where {T,FL,FC,FR}
     fd = sum(zip((<, ==, >), (fl, fc, fr))) do (pred, bfun)
-        iszero(bfun(x)) ? zero(x) : bfun(x) * pred(x, T(0))
+        iszero(bfun(x)) ? zero(x) : bfun(x) * pred(x, T(a))
     end
 
     return fd
 end
-function custom_sign(x::R, fl::FL, fc::FC, fr::FR) where {R<:Real,FL,FC,FR}
-    y = iszero(x) ? fc(x) : (x < 0 ? fl(x) : fr(x))
+function custom_sign(x::R; fl::FL, fc::FC, fr::FR, a=0.0) where {R<:Real,FL,FC,FR}
+    y = x==a ? fc(x) : (x < a ? fl(x) : fr(x))
 end
 
 # standard sign function # 
 #------------------------#
 
-@inline Base.sign(x::FiniteDual) = custom_sign(x, xl -> -1, xc -> 0, xr -> 1)
+@inline Base.sign(x::FiniteDual) = custom_sign(x; fl=xl -> -1, fc=xc -> 0, fr=xr -> 1)
 
 # heaviside step function #
 #-------------------------#
 
-@inline heaviside(x) = custom_sign(x, xl -> 0, xc -> 1, xr -> 1)
+@inline heaviside(x) = custom_sign(x; fl=xl -> 0, fc=xc -> 1, fr=xr -> 1)

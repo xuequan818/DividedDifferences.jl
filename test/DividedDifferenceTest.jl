@@ -67,7 +67,7 @@ end
 end
 
 @testset "spectial function defined by branches" begin
-    f(x) = DividedDifferences.custom_sign(x - 3, xl -> exp(1 / (xl^2 + 1)), xc -> 0, xr -> cos(xr) - 1)
+    f(x) = DividedDifferences.custom_sign(x; fl=xl -> exp(1 / (xl^2 + 1)), fc=xc -> 0, fr=xr -> cos(xr) - 1, a=3)
     for i = 2:length(X)
         x = X[1:i]
         dd_naive = divided_difference_naive(f, x)
@@ -77,7 +77,7 @@ end
 end
 
 @testset "heaviside step function" begin
-	f(x) = DividedDifferences.heaviside(x-2)
+	f(x) = DividedDifferences.heaviside(x)
 	for i = 2:length(X)
         x = X[1:i]
         dd_naive = divided_difference_naive(f, x)
