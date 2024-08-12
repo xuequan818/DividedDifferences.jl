@@ -1,11 +1,13 @@
 name = "DividedDifferences"
-uuid = "33c4fd3d-dcf9-4bf9-b0d5-a6a859f57014"
+uuid = "ca54fc82-bf42-49fd-94f8-048f44d9e20a"
 authors = ["xquan818 <xuequan818@gmail.com>"]
-version = "0.1.0"
+version = "1.0.0-DEV"
 
-[deps]
-DiffTests = "de460e47-3fe3-5279-bb4a-814414816d5d"
-ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+[compat]
+julia = "1.6.7"
+
+[extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
