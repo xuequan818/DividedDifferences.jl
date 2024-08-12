@@ -6,8 +6,8 @@ Since the divided-difference table for a function `f` is an upper triangular mat
 ```math
 F(x) = 
 \begin{cases}
-f_l(x) , \quad{\rm if}\,\, x< a\\
-f_c(x) , \quad{\rm if}\,\, x= a\\
+f_l(x), \quad{\rm if}\,\, x< a\\
+f_c(x), \quad{\rm if}\,\, x= a\\
 f_r(x), \quad{\rm if}\,\, x>a\\
 \end{cases}
 ```
