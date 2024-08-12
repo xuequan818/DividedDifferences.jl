@@ -48,7 +48,7 @@ julia> out
 DividedDifferences can still deal with the non-scalar functions:
 ```julia
 julia> function f!(y, x)                   # non-scalar function, store the result in y
-	  fill!(y, zero(x))
+	   fill!(y, zero(x))
            y[1] = x
            for i in 2:length(y)
                y[i] = exp(x) * sin(y[i-1])
