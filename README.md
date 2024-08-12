@@ -1,3 +1,4 @@
+
 # DividedDifferences.jl
 
 DividedDifferences computes **divided differences** by manipulating the **divided-difference tables** (see [![DOI](https://img.shields.io/badge/DOI-10.21105/jcon.00069-blue)](https://doi.org/10.1007/978-1-4020-6585-9_13)). While this method does not speed up execution compared to the naive approach (or even slower), its advantage is that the higher-order results are more accurate. In particular, when the points $x_0,x_1,\dots,x_n$ are very close or identical, the numerical error of the naive approach blows up, whereas this method ensures accurate convergence.
