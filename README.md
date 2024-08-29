@@ -1,5 +1,5 @@
-[![Build Status](https://github.com/xuequan818/DividedDifferences.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/xuequan818/DividedDifferences.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/xuequan818/DividedDifferences.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/xuequan818/DividedDifferences.jl)
+[![Build Status](https://github.com/xuequan818/DividedDifferences.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/xuequan818/DividedDifferences.jl/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/xuequan818/DividedDifferences.jl/graph/badge.svg?token=XNA1NK3RI8)](https://codecov.io/gh/xuequan818/DividedDifferences.jl)
 
 # DividedDifferences.jl
 
