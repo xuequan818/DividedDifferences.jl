@@ -10,6 +10,7 @@
 Return the divided difference `f[x_0,x_1,...,x_n]`, assuming `f` is called as `f(x)`.
 """
 @inline function divided_difference(f::F, x::Vector{R}) where {F,R<:Real}
+    sort!(x)
     FD = FiniteDual(x)
     return extract_DD(f(FD))
 end
@@ -24,6 +25,7 @@ where `y` is an array and f!(x_0) is stored in `y`.
 """
 @inline function divided_difference(f!::F, y::AbstractArray{Y}, 
                                     x::Vector{R}) where {F,Y,R<:Real}
+    sort!(x)
     require_one_based_indexing(y)
     yfd = similar(y, FiniteDual{Y,length(x)})
     f!(yfd, FiniteDual(x))
@@ -40,6 +42,7 @@ assuming `f` is called as `f(x)` and returns array.
 """
 @inline function divided_difference!(result::AbstractArray, f::F,
                                      x::Vector{R}) where {F,R<:Real}
+    sort!(x)
     require_one_based_indexing(result)
     yfd = f(FiniteDual(x))
     result = extract_DD!(result, yfd)
@@ -55,6 +58,7 @@ assuming `f!` is called as `f!(y, x)`, where `y` is an array and f!(x_0) is stor
 @inline function divided_difference!(result::AbstractArray, f!::F,
                                      y::AbstractArray{Y}, 
                                      x::Vector{R}) where {F,Y,R<:Real}
+    sort!(x)
     require_one_based_indexing(result, y)
     yfd = similar(y, FiniteDual{Y,length(x)})
     f!(yfd, FiniteDual(x))
