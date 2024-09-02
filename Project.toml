@@ -1,7 +1,7 @@
 name = "DividedDifferences"
 uuid = "ca54fc82-bf42-49fd-94f8-048f44d9e20a"
 authors = ["xquan818 <xuequan818@gmail.com>"]
-version = "1.0.0"
+version = "1.0.1"
 
 [deps]
 DiffTests = "de460e47-3fe3-5279-bb4a-814414816d5d"
