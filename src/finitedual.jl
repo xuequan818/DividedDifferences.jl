@@ -96,9 +96,34 @@ for pred in [:>, :<, :(==), :>=, :<=]
                    build_pred_table(y, $pred.(x, diag(y.DD_table)))
 end
 
-@inline function build_pred_table(x::FiniteDual{T,N}, 
-                                  pred_val::SVector{N, Bool}) where {T,N}
+@inline function build_pred_table(x::FiniteDual{T,N},
+                                  pred_val::SVector{N,Bool}) where {T,N}
     fx_val = values(x)
+
+    if issorted(fx_val)
+        return build_pred_table_in_sort(fx_val, pred_val)
+    end
+
+    pred_table = MMatrix{N,N}(diagm(float(T).(pred_val)))
+    for k = 1:N-1
+        indk = diagind(pred_table, k)
+        for (l, indl) in enumerate(indk)
+            pts = fx_val[l:l+k]
+            sp = sortperm(pts)
+            table_in_sort = build_pred_table_in_sort(pts[sp], pred_val[l:l+k][sp])
+            pred_table[indl] = extract_DD(table_in_sort)
+        end
+    end
+
+    return FiniteDual(pred_table)
+end
+
+function build_pred_table_in_sort(fx_val::AbstractVector,
+                                  pred_val::AbstractVector)
+    @assert issorted(fx_val)
+
+    T = eltype(fx_val)
+    N = length(fx_val)
 
     if sum(pred_val) in (0, N)
         return FiniteDual{N}(T(pred_val[1]))
@@ -168,7 +193,6 @@ for f in (:sin, :cos, :tan,
     @eval @inline Base.$f(x::FiniteDual) = FiniteDual($f(Array(x.DD_table)))
 end
 
-@inline Base.:cbrt(x::FiniteDual) = x^(1/3)
 @inline ^(x::FiniteDual, y::Int) = FiniteDual(^(x.DD_table, y))
 @inline ^(x::FiniteDual, y::Number) = FiniteDual(^(Array(x.DD_table), y))
 @inline ^(x::Number, y::FiniteDual) = FiniteDual(^(x, Array(y.DD_table)))
