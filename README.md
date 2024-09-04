@@ -49,12 +49,19 @@ julia> out
   2.85884    3.31
 ```
 
-In quantum chemistry and materials science, users usually need to compute the divided difference of the Fermi Dirac function $f(x)=\frac{1}{1+e^{\beta (x-\mu)}}$ with large $\beta$. Here it is recommended to use `DividedDifferences.invexp1p` i.e., $f(x)=\frac{1}{1+e^x}$, to maintain numerical stability.
+In quantum chemistry and materials science, users usually need to compute the divided difference of the Fermi Dirac function $f(x)=\frac{1}{1+e^{\beta (x-\mu)}}$ with large $\beta$. Here it is recommended to use `DividedDifferences.invexp1p` i.e., $f(x)=\frac{1}{1+e^x}$, to maintain the numerical stability.
 ```julia
-julia> h(x) = DividedDifferences.invexp1p(1000*x); # 1/(1+exp(1000x))
+# compare the second order divided difference of 1/(1+exp(1000x)) in the two definations
 
-julia> divided_difference(h, -1, -1, 1) # returns the second order divided difference h[-1, -1, 1]
+julia> f1(x) = DividedDifferences.invexp1p(1000*x); 
+
+julia> divided_difference(f1, -1, -1, 1)
 -0.24999999999982953
+
+julia> f2(x) = 1 / (1 + exp(1000x))
+
+julia> divided_difference(f2, -1, -1, 1)
+NaN
 ```
 DividedDifferences can still deal with the non-scalar functions:
 ```julia

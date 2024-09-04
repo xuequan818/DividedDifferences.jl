@@ -228,14 +228,14 @@ end
 @inline heaviside(x) = custom_sign(x; fl=xl -> 0, fc=xc -> 1, fr=xr -> 1)
 
 # Accurately compute 1/(1+exp(x)).                            #
-# Rewritten by log-sum-exp trick to avoid overflow/underflow: #
+# Rewritten by log-sum-exp trick to avoid overflow/underflow. #
 # First write 1 / (1+exp(x)) = exp(-log(1+exp(x))),           #
 # then log(1+exp(x)) = x + log(1+exp(x)) if x ≥ 0,            #
 #                    = log(1+exp(x))     if x < 0.            #
 # When act on FiniteDual and                                  #
 # the `x` ponits are not on the same branch,                  #
 # use the average of two branches:                            #
-# 0.5x + log(exp(-0.5 * x) + exp(0.5 * x)).                   #
+# 0.5 * x + log(exp(-0.5 * x) + exp(0.5 * x)).                   #
 # In this case, it is valid for `abs(x[i]) ≤ 1000`.           #
 #-------------------------------------------------------------#
 
