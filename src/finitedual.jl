@@ -173,12 +173,12 @@ for op in (:*, :/)
     @eval @inline $op(x::FiniteDual, y::Number) = FiniteDual($op(x.DD_table, y))
 end
 @inline *(x::Number, y::FiniteDual) = FiniteDual(x * y.DD_table)
-@inline /(x::Number, y::FiniteDual) = FiniteDual(x * inv(y.DD_table))
+@inline /(x::Number, y::FiniteDual{T,N}) where {T,N} = FiniteDual(\(y.DD_table, SDiagonal{N}(T(x) * I)))
 
 # matrix functions #
 #------------------#
 
-for f in (:exp, :log, :cis, :sqrt,
+for f in (:exp, :cis, :sqrt,
           :asin, :acos, :atan,
           :acsc, :asec, :acot,
           :asinh, :acosh, :atanh,
@@ -186,7 +186,7 @@ for f in (:exp, :log, :cis, :sqrt,
     @eval @inline Base.$f(x::FiniteDual) = FiniteDual($f(x.DD_table))
 end
 
-for f in (:sin, :cos, :tan,
+for f in (:log, :sin, :cos, :tan,
           :csc, :sec, :cot,
           :sinh, :cosh, :tanh,
           :csch, :sech, :coth)
@@ -199,9 +199,9 @@ end
 @inline ^(x::FiniteDual, y::FiniteDual) = exp(y * log(x))
 
 # custom functions defined by sign rule #
-# custom_sign(x) = fl(x) if x < a;    #
-#                  fc(x) if x = a;    #
-#                  fr(x) if x > a.    #
+# custom_sign(x) = fl(x) if x < a;      #
+#                  fc(x) if x = a;      #
+#                  fr(x) if x > a.      #
 #---------------------------------------#
 
 @inline function custom_sign(x::FiniteDual{T}; 
@@ -226,3 +226,29 @@ end
 #-------------------------#
 
 @inline heaviside(x) = custom_sign(x; fl=xl -> 0, fc=xc -> 1, fr=xr -> 1)
+
+# Accurately compute 1/(1+exp(x)).                            #
+# Rewritten by log-sum-exp trick to avoid overflow/underflow: #
+# First write 1 / (1+exp(x)) = exp(-log(1+exp(x))),           #
+# then log(1+exp(x)) = x + log(1+exp(x)) if x ≥ 0,            #
+#                    = log(1+exp(x))     if x < 0.            #
+# When act on FiniteDual and                                  #
+# the `x` ponits are not on the same branch,                  #
+# use the average of two branches:                            #
+# 0.5x + log(exp(-0.5 * x) + exp(0.5 * x)).                   #
+# In this case, it is valid for `abs(x[i]) ≤ 1000`.           #
+#-------------------------------------------------------------#
+
+@inline function invexp1p(x::FiniteDual) 
+    fx_bit = values(x) .>= 0
+    if sum(fx_bit) == length(x)
+        return exp(-(x + log(1+exp(-x))))
+    elseif sum(fx_bit) == 0
+        return exp(-log(1+exp(x)))
+    else
+        return exp(-(0.5 * x + log(exp(-0.5 * x) + exp(0.5 * x))))
+    end
+end
+
+@inline invexp1p(x::Real) = custom_sign(x; fl=xl -> exp(-log(1 + exp(xl))), fc=xc -> 0.5, fr=xr -> exp(-(xr + log(1 + exp(-xr)))))
+    

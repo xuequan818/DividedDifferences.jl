@@ -15,7 +15,8 @@ f_r(x), \quad&{\rm if}\,\, x>a\\
 \end{aligned}
 \right.
 ```
-by using `DividedDifferences.custom_sign(x; fl::Function, fc::Function, fr::Function, a)`.
+by using `DividedDifferences.custom_sign(x; fl::Function, fc::Function, fr::Function, a)`. 
+However, users should note that the result is not reliable when there are points close to the discontinuity `a`.
 
 Here are some simple examples showing how to use the package: 
 ```julia
@@ -48,6 +49,13 @@ julia> out
   2.85884    3.31
 ```
 
+In quantum chemistry and materials science, users usually need to compute the divided difference of the Fermi Dirac function $f(x)=\frac{1}{1+e^{\beta (x-\mu)}}$ with large $\beta$. Here it is recommended to use `DividedDifferences.invexp1p` i.e., $f(x)=\frac{1}{1+e^x}$, to maintain numerical stability.
+```julia
+julia> h(x) = DividedDifferences.invexp1p(1000*x); # 1/(1+exp(1000x))
+
+julia> divided_difference(h, -1, -1, 1) # returns the second order divided difference h[-1, -1, 1]
+-0.24999999999982953
+```
 DividedDifferences can still deal with the non-scalar functions:
 ```julia
 julia> function f!(y, x)                   # non-scalar function, store the result in y
