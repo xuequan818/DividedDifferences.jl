@@ -49,7 +49,7 @@ julia> out
   2.85884    3.31
 ```
 
-In quantum chemistry and materials science, users usually need to compute the divided difference of the Fermi Dirac function $f(x)=\frac{1}{1+e^{\beta (x-\mu)}}$ with large $\beta$. Here it is recommended to use `DividedDifferences.invexp1p` i.e., $f(x)=\frac{1}{1+e^x}$, to maintain the numerical stability.
+In quantum chemistry and materials science, users usually need to compute the divided difference of the Fermi Dirac function $f(x)=\frac{1}{1+e^{\beta (x-\mu)}}$ with large $\beta$. Here it is recommended to use `DividedDifferences.invexp1p` the stable version of $f(x)=\frac{1}{1+e^x}$, to maintain the numerical stability.
 ```julia
 # compare the second order divided difference of 1/(1+exp(1000x)) in the two definations
 
