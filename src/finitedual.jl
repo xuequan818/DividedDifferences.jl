@@ -235,7 +235,7 @@ end
 # When act on FiniteDual and                                  #
 # the `x` ponits are not on the same branch,                  #
 # use the average of two branches:                            #
-# 0.5 * x + log(exp(-0.5 * x) + exp(0.5 * x)).                   #
+# 0.5 * x + log(exp(-0.5 * x) + exp(0.5 * x)).                #
 # In this case, it is valid for `abs(x[i]) ≤ 1000`.           #
 #-------------------------------------------------------------#
 
