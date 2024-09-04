@@ -53,12 +53,12 @@ In quantum chemistry and materials science, users usually need to compute the di
 ```julia
 # compare the second order divided difference of 1/(1+exp(1000x)) in the two definations
 
-julia> f1(x) = DividedDifferences.invexp1p(1000*x); 
+julia> f1(x) = DividedDifferences.invexp1p(1000x); 
 
 julia> divided_difference(f1, -1, -1, 1)
 -0.24999999999982953
 
-julia> f2(x) = 1 / (1 + exp(1000x))
+julia> f2(x) = 1 / (1 + exp(1000x));
 
 julia> divided_difference(f2, -1, -1, 1)
 NaN
