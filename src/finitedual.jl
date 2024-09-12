@@ -223,7 +223,7 @@ for pred in [:>, :<, :(==), :>=, :<=]
 end
 
 # The prediction function `f` acts on a matrix `A` could be computed by 
-# solving the Sylvester equation for a 2×2 block matrix. 
+# solving the Sylvester equation for 2×2 block matrices. 
 # Compute `f(A)` by the Schur decomposition `f(A) = Z*f(T)*Z'`.
 # First, reorder and divide `T` into a 2×2 matrix of upper triangular blocks, 
 # where one of the diagonal blocks has all eigenvalues meeting the prediction

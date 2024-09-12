@@ -24,13 +24,13 @@ function mat_fun_schur_parlett(f::Function, A::AbstractMatrix;
 
     # If eigenvalues are distinct,
     # compute f(T) by standard Parlett recurrence
-    split == 0 && return Z * parlett_recurence(f, T) * Z'
+    split == 0 && return Z * parlett_recurrence(f, T) * Z'
 
     # If there are close eigenvalues,
     # reorder the schur decomposition,
     # and compute f(T) by block Parlett recurrence
     reS, block_size = reorder_schur(S, split)
-    return reS.Z * block_parlett_recurence(f, reS.T, block_size) * reS.Z'
+    return reS.Z * block_parlett_recurrence(f, reS.T, block_size) * reS.Z'
 end
 
 # non-scalar function #
@@ -58,14 +58,14 @@ function mat_fun_schur_parlett!(f!::Function, F::AbstractArray{V},
         # If eigenvalues are distinct,
         # compute f(T) by standard Parlett recurrence
         if split == 0
-            parlett_recurence!(f!, F, T; kwargs...)
+            parlett_recurrence!(f!, F, T; kwargs...)
         else
             # If there are close eigenvalues,
             # reorder the schur decomposition,
             # and compute f(T) by block Parlett recurrence
             S, block_size = reorder_schur(S, split)
             T, Z, Λ = S
-            block_parlett_recurence!(f!, F, T, block_size; kwargs...)
+            block_parlett_recurrence!(f!, F, T, block_size; kwargs...)
         end
     end
 
@@ -78,7 +78,7 @@ end
 # Implemention of algorithm 4.2 #
 #-------------------------------#
 
-function parlett_recurence(f::Function, T::AbstractMatrix)
+function parlett_recurrence(f::Function, T::AbstractMatrix)
     @assert istriu(T)
 
     F = diagm(fval(f, diag(T)))
@@ -93,7 +93,7 @@ function parlett_recurence(f::Function, T::AbstractMatrix)
     return F
 end
 
-function parlett_recurence!(f!::Function, F::AbstractArray{V}, 
+function parlett_recurrence!(f!::Function, F::AbstractArray{V}, 
                             T::AbstractMatrix; 
                             kwargs...) where {V<:AbstractMatrix}
     @assert istriu(T)
@@ -116,7 +116,7 @@ end
 # Implemention of algorithm 4.3 #
 #-------------------------------#
 
-function block_parlett_recurence(f::Function, T::AbstractMatrix,
+function block_parlett_recurrence(f::Function, T::AbstractMatrix,
                                  block_size::Vector{<:Integer})
     @assert istriu(T)
 
@@ -153,7 +153,7 @@ function block_parlett_recurence(f::Function, T::AbstractMatrix,
     return F
 end
 
-function block_parlett_recurence!(f!::Function, F::AbstractArray{V},
+function block_parlett_recurrence!(f!::Function, F::AbstractArray{V},
                                   T::AbstractMatrix,
                                   block_size::Vector{<:Integer};
                                   kwargs...) where {V<:AbstractMatrix}
