@@ -117,7 +117,7 @@ end
 #-------------------------------#
 
 function block_parlett_recurence(f::Function, T::AbstractMatrix,
-                                 block_size::Vector{Int64})
+                                 block_size::Vector{<:Integer})
     @assert istriu(T)
 
     F = fill!(similar(T, typeof(f(T[1]))), 0)
