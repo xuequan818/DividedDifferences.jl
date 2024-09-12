@@ -155,7 +155,7 @@ end
 
 function block_parlett_recurence!(f!::Function, F::AbstractArray{V},
                                   T::AbstractMatrix,
-                                  block_size::Vector{Int64};
+                                  block_size::Vector{<:Integer};
                                   kwargs...) where {V<:AbstractMatrix}
 
     block = vcat(0, block_size)
