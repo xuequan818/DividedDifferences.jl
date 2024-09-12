@@ -10,19 +10,6 @@
 Return the divided difference `f[x_0,x_1,...,x_n]`, assuming `f` is called as `f(x)`. 
 A ill-conditioned test for the matrix function computation is set by default. 
 You can set `ill_test=false` to obtain a quik result. 
-In particular, `ill_test=false` must be set when calculating divided differences 
-for functions defined with branches.
-
-# Examples
-```jldoctest
-julia> x = [-1, 1, 2];
-
-julia> div_diff(sin, x)
--0.2578815142633704
-
-julia> div_diff(heaviside, -0.1, 0.1, -0.2; ill_test = false)
-16.666666666666664
-```
 """
 
 @inline function div_diff(f::F, x::Vector{R}; 

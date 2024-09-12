@@ -15,7 +15,7 @@ f_r(x), \quad&{\rm if}\,\, x>a\\
 \end{aligned}
 \right.
 ```
-by using `custom_sign(x; fl::Function, fc::Function, fr::Function, a)`. Users need to set `div_diff(f, x; ill_test=false)` when compute the divided difference for branch functions. However, users should be aware that the results are not reliable when there are points on the discontinuities.
+by using `custom_sign(x; fl::Function, fc::Function, fr::Function, a)`. However, users should be aware that the results are not reliable when there are points on the discontinuities.
 
 Here are some simple examples showing how to use the package: 
 ```julia
@@ -23,10 +23,10 @@ julia> using DividedDifferences
 
 julia> f(x) = custom_sign(x; fl=x->(x-1)/(x+1), fc=x->1.0, fr=x->0.0, a=1.); # returns a scalar
 
-julia> div_diff(f, 0.8, 0.8, 0.99, 1.01; ill_test=false) # returns the third order divided difference f[0.8, 0.8, 0.99, 1.01]
+julia> div_diff(f, 0.8, 0.8, 0.99, 1.01) # returns the third order divided difference f[0.8, 0.8, 0.99, 1.01]
 -5.486405741650227
 
-julia> div_diff(heaviside, -0.1, 0.1, -0.1; ill_test=false) # returns the second order divided difference heaviside[-0.1, 0.1, -0.1]
+julia> div_diff(heaviside, -0.1, 0.1, -0.1) # returns the second order divided difference heaviside[-0.1, 0.1, -0.1]
 25.0
 
 julia> g(x) = [sin(x + 1) cos(x - 1); exp(x) x^3] # returns an array

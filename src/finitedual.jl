@@ -121,19 +121,21 @@ Compute the matrix function `f(x.DD_table)`. By default,
 the calculation is first performed by Julia matrix operations 
 and then tested whether the result is ill-conditioned, 
 and if it is ill-conditioned, the calculation is performed by the schur parlett algorithm. 
-You can set `ill_test=false` to skip the test procedure.
+You can set `ill_test=false` to skip the testing and recalculation process.
 """
 
 @inline function mat_fun(f::Function, x::FiniteDual; 
                          ill_test::Bool=true, kwargs...)
     F = f(x)
+    typeof(F) <: CustomSign && return F.result
+    
     ill_test ? (try
         _mat_fun(f, F, x, Val(ill_test))
     catch e
         if isa(e, TypeError)
             f!(y, x) = copy!(y, f(x))
             _mat_fun!(f!, F, x, Val(ill_test))
-        else 
+        else
             throw(e)
         end
     end) : F
@@ -158,6 +160,7 @@ See `DividedDifferences.mat_fun` for a description of possible keyword arguments
                           x::FiniteDual; ill_test::Bool=true,
                           kwargs...) where {T<:FiniteDual}
     f!(F, x)
+    typeof(F) <: CustomSign && return F.result
     ill_test && _mat_fun!(f!, F, x, Val(ill_test); kwargs...)
     return F
 end
@@ -312,6 +315,14 @@ end
 @inline ^(x::Number, y::FiniteDual) = FiniteDual(^(x, Array(table(y))))
 @inline ^(x::FiniteDual, y::FiniteDual) = exp(y * log(x))
 
+################################
+# Function defined by branches #
+################################
+
+struct CustomSign 
+    result::FiniteDual
+end
+
 """
     custom_sign(x; fl::Function, fc::Function, fr::Function, a=0.0)
 
@@ -333,8 +344,9 @@ f_r(x), \\quad&{\rm if}\\,\\, x>a\\
         iszero(bfun(x)) ? zero(x) : bfun(x) * pred(x, a)
     end
 
-    return fd
+    return CustomSign(fd)
 end
+
 function custom_sign(x::R; fl::FL, fc::FC, fr::FR, a=0.0) where {R<:Real,FL,FC,FR}
     y = x==a ? fc(x) : (x < a ? fl(x) : fr(x))
 end
@@ -347,8 +359,8 @@ end
 """
     heaviside(x)
 
-Return 1 if `x>=0` and 0 otherwise.
+Return 1 if `x >= 0` and 0 otherwise.
 """
 
-@inline heaviside(x::FiniteDual) = >=(x, 0)
+@inline heaviside(x::FiniteDual) = CustomSign(x >= 0)
 @inline heaviside(x::Real) = x >= 0 ? 1 : 0

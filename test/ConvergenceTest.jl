@@ -65,7 +65,7 @@ end
     f(x) = custom_sign(x; fl=xl -> exp(1 / (xl^2 + 1)), fc=xc -> 0, fr=xr -> cos(xr) - 1, a=3)
     for i = 2:N
         d = derivative_nth_order(f, x, i - 1)
-        dd = div_diff(f, x * ones(i); ill_test=false)
+        dd = div_diff(f, x * ones(i))
         @test isapprox(d / prod(1:i-1), dd)
     end
 end
@@ -74,7 +74,7 @@ end
     f(x) = heaviside(x)
     for i = 2:N
         d = derivative_nth_order(f, x, i - 1)
-        dd = div_diff(f, x * ones(i); ill_test=false)
+        dd = div_diff(f, x * ones(i))
         @test isapprox(d / prod(1:i-1), dd)
     end
 end

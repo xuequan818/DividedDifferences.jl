@@ -71,7 +71,7 @@ end
     for i = 2:length(X)
         x = X[1:i]
         dd_naive = div_diff_naive(f, x)
-        dd_finitedual = div_diff(f, x; ill_test=false)
+        dd_finitedual = div_diff(f, x)
         @test isapprox(dd_naive, dd_finitedual)
     end
 end
@@ -81,7 +81,7 @@ end
 	for i = 2:length(X)
         x = X[1:i]
         dd_naive = div_diff_naive(f, x)
-        dd_finitedual = div_diff(f, x; ill_test=false)
+        dd_finitedual = div_diff(f, x)
         @test isapprox(dd_naive, dd_finitedual)
     end
 end
