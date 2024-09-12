@@ -5,7 +5,7 @@ using DividedDifferences
 using DiffTests
 
 # compute the divided difference by definition
-function divided_difference_naive(f::F, x::Vector{R}) where {F,R<:Real}
+function div_diff_naive(f::F, x::Vector{R}) where {F,R<:Real}
     N = length(x)
 
     d1 = [(f(x[i]) - f(x[i+1])) / (x[i] - x[i+1]) for i = 1:N-1]
@@ -23,8 +23,8 @@ const X = [1, 2, 3, 4]
 @testset "$f" for f in DiffTests.NUMBER_TO_NUMBER_FUNCS
     for i = 2:length(X)
 		x = X[1:i]
-		dd_naive = divided_difference_naive(f, x)
-		dd_finitedual = divided_difference(f, x)
+		dd_naive = div_diff_naive(f, x)
+		dd_finitedual = div_diff(f, x)
         @test isapprox(dd_naive, dd_finitedual)
     end
 end
@@ -32,12 +32,12 @@ end
 @testset "$f" for f in DiffTests.NUMBER_TO_ARRAY_FUNCS
     for i = 2:length(X)
 		x = X[1:i]
-		dd_naive = divided_difference_naive(f, x)
-		dd_finitedual = divided_difference(f, x)
+		dd_naive = div_diff_naive(f, x)
+		dd_finitedual = div_diff(f, x)
         @test isapprox(dd_naive, dd_finitedual)
 
         out = similar(dd_finitedual)
-		out = divided_difference!(out, f, x)
+		out = div_diff!(out, f, x)
         @test isapprox(out, dd_finitedual)
     end
 end
@@ -50,38 +50,38 @@ end
     for i = 2:length(X)
         x = X[1:i]
         val0 = f(x[1])
-        dd_naive = divided_difference_naive(f, x)
-        dd_finitedual = divided_difference(f, x)
+        dd_naive = div_diff_naive(f, x)
+        dd_finitedual = div_diff(f, x)
         @test isapprox(dd_naive, dd_finitedual)
 
         fill!(y, 0.0)
-        @test isapprox(divided_difference(f!, y, x), dd_finitedual)
+        @test isapprox(div_diff(f!, y, x), dd_finitedual)
         @test isapprox(val0, y)
 
         out = similar(dd_finitedual)
         fill!(y, 0.0)
-        divided_difference!(out, f!, y, x)
+        div_diff!(out, f!, y, x)
         @test isapprox(out, dd_finitedual)
 		@test isapprox(val0, y)
     end
 end
 
 @testset "spectial function defined by branches" begin
-    f(x) = DividedDifferences.custom_sign(x; fl=xl -> exp(1 / (xl^2 + 1)), fc=xc -> 0, fr=xr -> cos(xr) - 1, a=3)
+    f(x) = custom_sign(x; fl=xl -> exp(1 / (xl^2 + 1)), fc=xc -> 0, fr=xr -> cos(xr) - 1, a=2.5)
     for i = 2:length(X)
         x = X[1:i]
-        dd_naive = divided_difference_naive(f, x)
-        dd_finitedual = divided_difference(f, x)
+        dd_naive = div_diff_naive(f, x)
+        dd_finitedual = div_diff(f, x; ill_test=false)
         @test isapprox(dd_naive, dd_finitedual)
     end
 end
 
 @testset "heaviside step function" begin
-	f(x) = DividedDifferences.heaviside(x)
+	f(x) = heaviside(x-2.5)
 	for i = 2:length(X)
         x = X[1:i]
-        dd_naive = divided_difference_naive(f, x)
-        dd_finitedual = divided_difference(f, x)
+        dd_naive = div_diff_naive(f, x)
+        dd_finitedual = div_diff(f, x; ill_test=false)
         @test isapprox(dd_naive, dd_finitedual)
     end
 end
@@ -90,8 +90,8 @@ end
     f(x) = (1+im)*x
     for i = 2:length(X)
         x = X[1:i]
-        dd_naive = divided_difference_naive(f, x)
-        dd_finitedual = divided_difference(f, x)
+        dd_naive = div_diff_naive(f, x)
+        dd_finitedual = div_diff(f, x)
         @test isapprox(dd_naive, dd_finitedual)
     end
 end

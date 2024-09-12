@@ -3,8 +3,13 @@ using Test
 
 @testset "DividedDifferences.jl" begin
     t0 = time()
-    @testset "Divided Differences" begin
-        println("##### Testing divided difference functionality...")
+    @testset "Split and Swap" begin
+        println("##### Testing split and swap strategy...")
+        t = @elapsed include("SplitSwapTest.jl")
+        println("##### done (took $t seconds).")
+    end
+    @testset "Schur Parlett Algorithm" begin
+        println("##### Testing schur parlett algorithm functionality...")
         t = @elapsed include("DividedDifferenceTest.jl")
         println("##### done (took $t seconds).")
     end

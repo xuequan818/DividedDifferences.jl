@@ -5,7 +5,7 @@
 
 DividedDifferences computes **divided differences** by manipulating the **divided-difference tables** (see [![DOI](https://img.shields.io/badge/DOI-10.21105/jcon.00069-blue)](https://doi.org/10.1007/978-1-4020-6585-9_13)). While this method does not speed up execution compared to the naive approach (or even slower), its advantage is that the higher-order results are more accurate. In particular, when the points $x_0,x_1,\dots,x_n$ are very close or identical, the numerical error of the naive approach blows up, whereas this method ensures accurate convergence.
 
-Since the divided-difference table for a function `f` is an upper triangular matrix, DividedDifferences supports the Julia matrix functions (or any object composed of them). Additionally, DividedDifferences also supports the special functions which are definded with branches, such as sign function `sign` and Heaviside step function `DividedDifferences.heaviside`. Users can also customize branching functions with the form
+Since the divided-difference table for a function `f` is an upper triangular matrix,  DividedDifferences supports the Julia matrix functions (or any object composed of them). Additionally, DividedDifferences also supports the special functions which are definded with branches, such as sign function `sign` and Heaviside step function `heaviside`. Users can also customize branch functions with the form
 ```math
 F(x) = \left\{
 \begin{aligned}
@@ -15,17 +15,19 @@ f_r(x), \quad&{\rm if}\,\, x>a\\
 \end{aligned}
 \right.
 ```
-by using `DividedDifferences.custom_sign(x; fl::Function, fc::Function, fr::Function, a)`. 
-However, users should note that the result is not reliable when there are points close to the discontinuity `a`.
+by using `custom_sign(x; fl::Function, fc::Function, fr::Function, a)`. Users need to set `div_diff(f, x; ill_test=false)` when compute the divided difference for branch functions. However, users should be aware that the results are not reliable when there are points on the discontinuities.
 
 Here are some simple examples showing how to use the package: 
 ```julia
 julia> using DividedDifferences
 
-julia> f(x) = DividedDifferences.custom_sign(x; fl=x->(x-1)/(x+1), fc=x->1.0, fr=x->0.0, a=1.); # returns a scalar
+julia> f(x) = custom_sign(x; fl=x->(x-1)/(x+1), fc=x->1.0, fr=x->0.0, a=1.); # returns a scalar
 
-julia> divided_difference(f, 0.8, 0.8, 0.99, 1.01) # returns the third order divided difference f[0.8, 0.8, 0.99, 1.01]
+julia> div_diff(f, 0.8, 0.8, 0.99, 1.01; ill_test=false) # returns the third order divided difference f[0.8, 0.8, 0.99, 1.01]
 -5.486405741650227
+
+julia> div_diff(heaviside, -0.1, 0.1, -0.1; ill_test=false) # returns the second order divided difference heaviside[-0.1, 0.1, -0.1]
+25.0
 
 julia> g(x) = [sin(x + 1) cos(x - 1); exp(x) x^3] # returns an array
 
@@ -34,14 +36,14 @@ julia> x = [1.0,1.1]
  1.0
  1.1
 
-julia> dd = divided_difference(g, x) # returns the first order divided difference g[1.0, 1.1]
+julia> dd = div_diff(g, x) # returns the first order divided difference g[1.0, 1.1]
 2×2 Matrix{Float64}:
  -0.460881  -0.0499583
   2.85884    3.31
 
 julia> out = similar(dd);
 
-julia> divided_difference!(out, g, x); # store the divided difference in out
+julia> div_diff!(out, g, x); # store the divided difference in out
 
 julia> out
 2×2 Matrix{Float64}:
@@ -49,20 +51,6 @@ julia> out
   2.85884    3.31
 ```
 
-In quantum chemistry and materials science, users usually need to compute the divided difference of the Fermi Dirac function $f(x)=\frac{1}{1+e^{\beta (x-\mu)}}$ with large $\beta$. Here it is recommended to use `DividedDifferences.invexp1p` the stable version of $f(x)=\frac{1}{1+e^x}$, to maintain the numerical stability.
-```julia
-# compare the second order divided difference of 1/(1+exp(1000x)) in the two definations
-
-julia> f1(x) = DividedDifferences.invexp1p(1000x); 
-
-julia> divided_difference(f1, -1, -1, 1)
--0.24999999999982953
-
-julia> f2(x) = 1 / (1 + exp(1000x));
-
-julia> divided_difference(f2, -1, -1, 1)
-NaN
-```
 DividedDifferences can still deal with the non-scalar functions:
 ```julia
 julia> function f!(y, x)                   # non-scalar function, store the result in y
@@ -86,7 +74,7 @@ julia> x = collect(0.9:0.1:1.1)
  1.0
  1.1
 
-julia> dd = divided_difference(f!, y, x) # returns the second order divided difference  
+julia> dd = div_diff(f!, y, x) # returns the second order divided difference  
                                          # f![0.9, 1.0, 1.1] and stores f!(x[1]) in y
 3×2 Matrix{Float64}:
    0.0       -3.58207
@@ -107,7 +95,7 @@ julia> fill!(y, 0.0);
  0.0  0.0
  0.0  0.0
 
-julia> divided_difference!(out, f!, y, x); # stores divided difference in out and f!(x[1]) in y
+julia> div_diff!(out, f!, y, x); # stores divided difference in out and f!(x[1]) in y
 
 julia> out
 3×2 Matrix{Float64}:

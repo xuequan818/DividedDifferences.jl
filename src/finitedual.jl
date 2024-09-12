@@ -4,22 +4,54 @@ import Base: +, -, *, /, ^, >, <, ==, >=, <=
 # FiniteDual #
 ##############
 
+"""
+    DividedDifferences.can_finitedual(V::Type)
+
+Determines whether the type V is allowed as the scalar type in a
+FiniteDual. By default, only `<:Real` types are allowed.
+"""
+
+can_finitedual(::Type{<:Number}) = true
+can_finitedual(::Type) = false
+
+"""
+    DividedDifferences.can_dd_table(DD_table::AbstractMatrix)
+
+Test whether the DD_table is an upper triangular matrix.
+"""
+
+can_dd_table(A::AbstractMatrix) = istriu(A) || norm(A-UpperTriangular(A)) < sqrt(eps(eltype(A)))
+
 struct FiniteDual{T,N} <: Number
     DD_table::SMatrix{N, N, T}
+    function FiniteDual(DD_table::SMatrix{N,N,T}) where {T,N}
+        can_finitedual(T) || throw_cannot_finitedual(T) 
+        can_dd_table(DD_table) || throw_cannot_dd_table(DD_table) 
+        new{T,N}(DD_table)
+    end
+end
+
+##############
+# Exceptions #
+##############
+
+@noinline function throw_cannot_finitedual(T::Type)
+    throw(ArgumentError("Cannot create a finite dual over scalar type $T." *
+                        " If the type behaves as a scalar, define DividedDifferences.can_finitedual(::Type{$T}) = true."))
+end
+
+@noinline function throw_cannot_dd_table(A::AbstractMatrix)
+    error("Divided difference table should be upper triangular.")
 end
 
 ################
 # Constructors #
 ################
 
-@inline function FiniteDual(x::AbstractMatrix{T}) where {T}
-	if !istriu(x)
-		error("Cannot create a divided difference table")
-    end
-	
-    N = size(x,1)
-    FiniteDual(SMatrix{N,N,T}(x))
+@inline function FiniteDual(x::AbstractMatrix{T}, ::Val{N}) where {T,N}
+    N == 1 ? (can_finitedual(T) ? x : throw_cannot_finitedual(T)) : FiniteDual(SMatrix{N,N,T}(x))
 end
+@inline FiniteDual(x::AbstractMatrix) = FiniteDual(x, Val(size(x,1)))
 
 # construct FiniteDual for the identity function f(x) = x
 @inline FiniteDual(x::AbstractVector{T}) where {T} = FiniteDual(Bidiagonal{T}(x, ones(T,(length(x) - 1)), :U))
@@ -38,9 +70,14 @@ end
 ##############################
 
 @inline Base.eltype(::FiniteDual{T,N}) where {T,N} = T
-@inline Base.length(::FiniteDual{T,N}) where {T,N} = N
+@inline Base.eltype(::Type{FiniteDual{T,N}}) where {T,N} = T
 
-@inline Base.values(x::FiniteDual) = diag(x.DD_table)
+@inline Base.length(::FiniteDual{T,N}) where {T,N} = N
+@inline Base.length(::Type{FiniteDual{T,N}}) where {T,N} = N
+
+@inline table(x::FiniteDual) = x.DD_table
+
+@inline Base.values(x::FiniteDual) = diag(table(x))
 @inline function value(x::FiniteDual{T,N}, i::Integer) where {T,N}
     @assert 1 <= i <= N
     return values(x)[i]
@@ -56,7 +93,7 @@ function Base.promote_rule(::Type{FiniteDual{T,N}},
 end
 
 for R in (AbstractIrrational, Real, BigFloat, Bool)
-    if isconcretetype(R) # issue #322
+    if isconcretetype(R)
         @eval begin
             Base.promote_rule(::Type{$R}, ::Type{FiniteDual{T,N}}) where {T,N} = FiniteDual{promote_type($R, T),N}
             Base.promote_rule(::Type{FiniteDual{T,N}}, ::Type{$R}) where {T,N} = FiniteDual{promote_type($R, T),N}
@@ -69,9 +106,97 @@ for R in (AbstractIrrational, Real, BigFloat, Bool)
     end
 end
 
-@inline Base.convert(::Type{FiniteDual{T,N}}, x::FiniteDual{V,N}) where {T,V,N} = FiniteDual(T.(x.DD_table))
+@inline Base.convert(::Type{FiniteDual{T,N}}, x::FiniteDual{V,N}) where {T,V,N} = FiniteDual(T.(table(x)))
 @inline Base.convert(::Type{FiniteDual{T,N}}, x::Number) where {T,N} = FiniteDual{N}(T(x))
 @inline Base.convert(::Type{FD}, x::FD) where {FD<:FiniteDual} = x
+
+###################
+# Matrix Function #
+###################
+
+"""
+    DividedDifferences.mat_fun(f, x::FiniteDual; ill_test::Bool=true, kwargs...)
+
+Compute the matrix function `f(x.DD_table)`. By default, 
+the calculation is first performed by Julia matrix operations 
+and then tested whether the result is ill-conditioned, 
+and if it is ill-conditioned, the calculation is performed by the schur parlett algorithm. 
+You can set `ill_test=false` to skip the test procedure.
+"""
+
+@inline function mat_fun(f::Function, x::FiniteDual; 
+                         ill_test::Bool=true, kwargs...)
+    F = f(x)
+    ill_test ? (try
+        _mat_fun(f, F, x, Val(ill_test))
+    catch e
+        if isa(e, TypeError)
+            f!(y, x) = copy!(y, f(x))
+            _mat_fun!(f!, F, x, Val(ill_test))
+        else 
+            throw(e)
+        end
+    end) : F
+end
+
+@inline function _mat_fun(f::Function, F, x::FiniteDual, 
+                          ::Val{true}; kwargs...)
+    if isill_mat_fun(F) 
+        F = FiniteDual(mat_fun_schur_parlett(f, table(x); kwargs...))
+    end
+    return F
+end
+
+"""
+    DividedDifferences.mat_fun!(f!, F::AbstractArray{T}, x::FiniteDual; ill_test::Bool=true, kwargs...) where {T<:FiniteDual}
+
+Compute the matrix function `f(x.DD_table)`, and store the results in `F`. 
+See `DividedDifferences.mat_fun` for a description of possible keyword arguments.
+"""
+
+@inline function mat_fun!(f!::Function, F::AbstractArray{T},
+                          x::FiniteDual; ill_test::Bool=true,
+                          kwargs...) where {T<:FiniteDual}
+    f!(F, x)
+    ill_test && _mat_fun!(f!, F, x, Val(ill_test); kwargs...)
+    return F
+end
+
+@inline function _mat_fun!(f!::Function, F::AbstractArray{T}, 
+                           x::FiniteDual, ::Val{true}; 
+                           kwargs...) where {T<:FiniteDual}
+    select = isill_mat_fun(F)
+    if any(isone, select)
+        f!_select(y, x) = begin 
+            f!(y, x)
+            y[select]
+        end
+        F_select = Array.(table.(F[select]))
+        F[select] = FiniteDual.(mat_fun_schur_parlett!(f!_select, F_select, 
+                    table(x); f!_T=eltype(T), f!_S=size(F), kwargs...))
+    end
+    return F
+end
+
+@inline function isill_mat_fun(F::FiniteDual{V}) where {V}
+    ill_cond = sqrt(eps(real(float(oneunit(V)))))
+    Tf = table(F)
+    length(F) == 2 ? false : ((any(isnan, Tf) || any(isinf, Tf) || 
+                 cond(Tf) > ill_cond) ? true : false)
+end
+@inline isill_mat_fun(F::Number) = false
+
+@inline function isill_mat_fun(F::AbstractArray{V}) where {V<:FiniteDual}
+    ill_cond = sqrt(eps(real(float(oneunit(eltype(V))))))
+    Tf = table.(F)
+    FBool = Array{Bool}(undef, size(Tf))
+    if length(V) > 2
+        for (iy, y) in enumerate(Tf)
+            FBool[iy] = (any(isnan, y) || any(isinf, y) || cond(y) > ill_cond) && 1
+        end
+    end
+    FBool
+end
 
 #####################
 # Generic Functions #
@@ -86,59 +211,40 @@ end
 # Predicates #
 #------------#
 
-isconstant(x::FiniteDual) = values(x) == value(x,1) * I
-Base.iszero(x::FiniteDual) = iszero(x.DD_table)
+@inline isconstant(x::FiniteDual) = values(x) == value(x, 1) * I
+
+@inline Base.iszero(x::FiniteDual) = iszero(table(x))
 
 for pred in [:>, :<, :(==), :>=, :<=]
     @eval @inline $pred(x::FiniteDual, y::Number) = 
-                   build_pred_table(x, $pred.(diag(x.DD_table), y))
+                   build_pred_table(x, $pred.(values(x), y))
     @eval @inline $pred(x::Number, y::FiniteDual) = 
-                   build_pred_table(y, $pred.(x, diag(y.DD_table)))
+                   build_pred_table(y, $pred.(x, values(y)))
 end
 
-@inline function build_pred_table(x::FiniteDual{T,N},
-                                  pred_val::SVector{N,Bool}) where {T,N}
-    fx_val = values(x)
-
-    if issorted(fx_val)
-        return build_pred_table_in_sort(fx_val, pred_val)
+@inline function build_pred_table(x::FiniteDual{Tx,N}, pred_val) where {Tx,N}
+    S = schur(table(x))
+    block_size = pred_val[1] ? [sum(pred_val), N] : [N - sum(pred_val), N]
+    fx = Array(eltype(S).(pred_val))
+    if !(issorted(pred_val;rev=true) || issorted(pred_val;rev=false))
+        S, block_size = reorder_schur(schur(table(x)), Int.(pred_val) .+ 1)
+        sort!(fx; rev=true)
     end
+    T, Z, Λ = S
 
-    pred_table = MMatrix{N,N}(diagm(float(T).(pred_val)))
-    for k = 1:N-1
-        indk = diagind(pred_table, k)
-        for (l, indl) in enumerate(indk)
-            pts = fx_val[l:l+k]
-            sp = sortperm(pts)
-            table_in_sort = build_pred_table_in_sort(pts[sp], pred_val[l:l+k][sp])
-            pred_table[indl] = extract_DD(table_in_sort)
-        end
-    end
+    F = diagm(fx)
+    i = 1:block_size[1]
+    j = block_size[1]+1:block_size[2]
+    Y = F[i, i] * T[i, j] - T[i, j] * F[j, j]
 
-    return FiniteDual(pred_table)
-end
-
-function build_pred_table_in_sort(fx_val::AbstractVector,
-                                  pred_val::AbstractVector)
-    @assert issorted(fx_val)
-
-    T = eltype(fx_val)
-    N = length(fx_val)
-
-    if sum(pred_val) in (0, N)
-        return FiniteDual{N}(T(pred_val[1]))
+    # solve Tii*Fij + Fij*(-Tjj) + (-Y) = 0
+    if length(i) > 1 || length(j) > 1
+        F[i, j] = sylvester(T[i, i], -T[j, j], -Y)
     else
-        pred_table = MMatrix{N,N}(diagm(float(T).(pred_val)))
-        for k = 1:N-1
-            indk = diagind(pred_table, k)
-            valk = diag(pred_table, k - 1)
-            valkdiff = valk[2:end] - valk[1:end-1]
-            ptsdiff = fx_val[k+1:N] - fx_val[1:N-k]
-            diffBit = (valkdiff .!= 0)
-            pred_table[indk[diffBit]] = valkdiff[diffBit] ./ ptsdiff[diffBit]
-        end
-        return FiniteDual(pred_table)
+        F[i, j] = Y ./ (T[i, i] - T[j, j])
     end
+
+    return FiniteDual(Z * F * Z')
 end
 
 ###################################
@@ -155,12 +261,12 @@ end
 for op in (:+, :-)
     @eval @inline function $op(x::FiniteDual, y::FiniteDual)
         @assert length(x) == length(y)
-		FiniteDual($op(x.DD_table,y.DD_table))
+		FiniteDual($op(table(x),table(y)))
 	end
-    @eval @inline $op(x::FiniteDual{Tx,Nx}, y::Number) where {Tx,Nx} = FiniteDual($op(x.DD_table, SDiagonal{Nx}(y * I)))
-    @eval @inline $op(x::Number, y::FiniteDual{Ty,Ny}) where {Ty,Ny} = FiniteDual($op(SDiagonal{Ny}(x * I), y.DD_table))
+    @eval @inline $op(x::FiniteDual{Tx,Nx}, y::Number) where {Tx,Nx} = FiniteDual($op(table(x), SDiagonal{Nx}(y * I)))
+    @eval @inline $op(x::Number, y::FiniteDual{Ty,Ny}) where {Ty,Ny} = FiniteDual($op(SDiagonal{Ny}(x * I), table(y)))
 end
-@inline -(x::FiniteDual) = FiniteDual(-x.DD_table)
+@inline -(x::FiniteDual) = FiniteDual(-table(x))
 
 # (*)/(/) #
 #---------#
@@ -168,12 +274,12 @@ end
 for op in (:*, :/)
     @eval @inline function $op(x::FiniteDual, y::FiniteDual)
         @assert length(x) == length(y)
-        FiniteDual($op(x.DD_table, y.DD_table))
+        FiniteDual($op(table(x), table(y)))
     end
-    @eval @inline $op(x::FiniteDual, y::Number) = FiniteDual($op(x.DD_table, y))
+    @eval @inline $op(x::FiniteDual, y::Number) = FiniteDual($op(table(x), y))
 end
-@inline *(x::Number, y::FiniteDual) = FiniteDual(x * y.DD_table)
-@inline /(x::Number, y::FiniteDual{T,N}) where {T,N} = FiniteDual(\(y.DD_table, SDiagonal{N}(T(x) * I)))
+@inline *(x::Number, y::FiniteDual) = FiniteDual(x * table(y))
+@inline /(x::Number, y::FiniteDual) = FiniteDual(x * inv(table(y)))
 
 # matrix functions #
 #------------------#
@@ -183,32 +289,40 @@ for f in (:exp, :cis, :sqrt,
           :acsc, :asec, :acot,
           :asinh, :acosh, :atanh,
           :acsch, :asech, :acoth)
-    @eval @inline Base.$f(x::FiniteDual) = FiniteDual($f(x.DD_table))
+    @eval @inline Base.$f(x::FiniteDual) = FiniteDual($f(table(x)))
 end
 
 for f in (:log, :sin, :cos, :tan,
           :csc, :sec, :cot,
           :sinh, :cosh, :tanh,
           :csch, :sech, :coth)
-    @eval @inline Base.$f(x::FiniteDual) = FiniteDual($f(Array(x.DD_table)))
+    @eval @inline Base.$f(x::FiniteDual) = FiniteDual($f(Array(table(x))))
 end
 
-@inline ^(x::FiniteDual, y::Int) = FiniteDual(^(x.DD_table, y))
-@inline ^(x::FiniteDual, y::Number) = FiniteDual(^(Array(x.DD_table), y))
-@inline ^(x::Number, y::FiniteDual) = FiniteDual(^(x, Array(y.DD_table)))
+@inline ^(x::FiniteDual, y::Int) = FiniteDual(^(table(x), y))
+@inline ^(x::FiniteDual, y::Number) = FiniteDual(^(Array(table(x)), y))
+@inline ^(x::Number, y::FiniteDual) = FiniteDual(^(x, Array(table(y))))
 @inline ^(x::FiniteDual, y::FiniteDual) = exp(y * log(x))
 
-# custom functions defined by sign rule #
-# custom_sign(x) = fl(x) if x < a;      #
-#                  fc(x) if x = a;      #
-#                  fr(x) if x > a.      #
-#---------------------------------------#
+"""
+    custom_sign(x; fl::Function, fc::Function, fr::Function, a=0.0)
 
-@inline function custom_sign(x::FiniteDual{T}; 
-                             fl::FL, fc::FC, fr::FR,
-                             a=0.0) where {T,FL,FC,FR}
+Customize the function definded with branches, defined by 
+```math
+F(x) = \\left\\{
+\begin{aligned}
+f_l(x), \\quad&{\rm if}\\,\\, x< a\\
+f_c(x), \\quad&{\rm if}\\,\\, x= a\\
+f_r(x), \\quad&{\rm if}\\,\\, x>a\\
+\end{aligned}
+\right.
+```
+"""
+
+@inline function custom_sign(x::FiniteDual; fl::Function,
+                             fc::Function, fr::Function, a=0.0)
     fd = sum(zip((<, ==, >), (fl, fc, fr))) do (pred, bfun)
-        iszero(bfun(x)) ? zero(x) : bfun(x) * pred(x, T(a))
+        iszero(bfun(x)) ? zero(x) : bfun(x) * pred(x, a)
     end
 
     return fd
@@ -222,33 +336,11 @@ end
 
 @inline Base.sign(x::FiniteDual) = custom_sign(x; fl=xl -> -1, fc=xc -> 0, fr=xr -> 1)
 
-# heaviside step function #
-#-------------------------#
+"""
+    heaviside(x)
 
-@inline heaviside(x) = custom_sign(x; fl=xl -> 0, fc=xc -> 1, fr=xr -> 1)
+Return 1 if `x>=0` and 0 otherwise.
+"""
 
-# Accurately compute 1/(1+exp(x)).                            #
-# Rewritten by log-sum-exp trick to avoid overflow/underflow. #
-# First write 1 / (1+exp(x)) = exp(-log(1+exp(x))),           #
-# then log(1+exp(x)) = x + log(1+exp(x)) if x ≥ 0,            #
-#                    = log(1+exp(x))     if x < 0.            #
-# When act on FiniteDual and                                  #
-# the `x` ponits are not on the same branch,                  #
-# use the average of two branches:                            #
-# 0.5 * x + log(exp(-0.5 * x) + exp(0.5 * x)).                #
-# In this case, it is valid for `abs(x[i]) ≤ 1000`.           #
-#-------------------------------------------------------------#
-
-@inline function invexp1p(x::FiniteDual) 
-    fx_bit = values(x) .>= 0
-    if sum(fx_bit) == length(x)
-        return exp(-(x + log(1+exp(-x))))
-    elseif sum(fx_bit) == 0
-        return exp(-log(1+exp(x)))
-    else
-        return exp(-(0.5 * x + log(exp(-0.5 * x) + exp(0.5 * x))))
-    end
-end
-
-@inline invexp1p(x::Real) = custom_sign(x; fl=xl -> exp(-log(1 + exp(xl))), fc=xc -> 0.5, fr=xr -> exp(-(xr + log(1 + exp(-xr)))))
-    
+@inline heaviside(x::FiniteDual) = >=(x, 0)
+@inline heaviside(x::Real) = x >= 0 ? 1 : 0

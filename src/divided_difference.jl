@@ -3,65 +3,83 @@
 ###############
 
 """
-    divided_difference(f, x::Vector)
-    divided_difference(f, x::Tuple)
-    divided_difference(f, x...)
+    div_diff(f, x::Vector; ill_test=true, kwargs...)
+    div_diff(f, x::Tuple; kwargs...)
+    div_diff(f, x...; kwargs...)
 
-Return the divided difference `f[x_0,x_1,...,x_n]`, assuming `f` is called as `f(x)`.
+Return the divided difference `f[x_0,x_1,...,x_n]`, assuming `f` is called as `f(x)`. 
+A ill-conditioned test for the matrix function computation is set by default. 
+You can set `ill_test=false` to obtain a quik result. 
+In particular, `ill_test=false` must be set when calculating divided differences 
+for functions defined with branches.
+
+# Examples
+```jldoctest
+julia> x = [-1, 1, 2];
+
+julia> div_diff(sin, x)
+-0.2578815142633704
+
+julia> div_diff(heaviside, -0.1, 0.1, -0.2; ill_test = false)
+16.666666666666664
+```
 """
-@inline function divided_difference(f::F, x::Vector{R}) where {F,R<:Real}
+
+@inline function div_diff(f::F, x::Vector{R}; 
+                          ill_test=true, 
+                          kwargs...) where {F,R<:Real}
     sort!(x)
-    FD = FiniteDual(x)
-    return extract_DD(f(FD))
+    fd = mat_fun(f, FiniteDual(x); ill_test, kwargs...)
+    return extract_DD(fd)
 end
-@inline divided_difference(f::F, x::Tuple) where {F} = divided_difference(f, collect(x))
-@inline divided_difference(f::F, x...) where {F} = divided_difference(f, tuple(x...))
+@inline div_diff(f::F, x::Tuple; kwargs...) where {F} = div_diff(f, collect(x); kwargs...)
+@inline div_diff(f::F, x...; kwargs...) where {F} = div_diff(f, tuple(x...); kwargs...)
 
 """
-    divided_difference(f!, y::AbstractArray, x::Vector{Real})
+    div_diff(f!, y::AbstractArray, x::Vector{Real}; kwargs...)
 
 Return the divided difference `f![x_0,x_1,...,x_n]`, assuming `f!` is called as `f!(y, x)`, 
 where `y` is an array and f!(x_0) is stored in `y`.
 """
-@inline function divided_difference(f!::F, y::AbstractArray{Y}, 
-                                    x::Vector{R}) where {F,Y,R<:Real}
+@inline function div_diff(f!::F, y::AbstractArray{Y}, 
+                          x::Vector{R}; kwargs...) where {F,Y,R<:Real}
     sort!(x)
     require_one_based_indexing(y)
     yfd = similar(y, FiniteDual{Y,length(x)})
-    f!(yfd, FiniteDual(x))
+    mat_fun!(f!, yfd, FiniteDual(x); kwargs...)
     v0(x) = value(x, 1)
     map!(v0, y, yfd)
     return extract_DD(yfd)
 end
 
 """
-    divided_difference!(result::AbstractArray, f, x::Vector{Real})
+    div_diff!(result::AbstractArray, f, x::Vector{Real})
 
 Compute the divided difference `f[x_0,x_1,...,x_n]` and store the results in `result`, 
 assuming `f` is called as `f(x)` and returns array.
 """
-@inline function divided_difference!(result::AbstractArray, f::F,
-                                     x::Vector{R}) where {F,R<:Real}
+@inline function div_diff!(result::AbstractArray, f::F,
+                           x::Vector{R}; kwargs...) where {F,R<:Real}
     sort!(x)
     require_one_based_indexing(result)
-    yfd = f(FiniteDual(x))
+    yfd = mat_fun(f, FiniteDual(x); kwargs...)
     result = extract_DD!(result, yfd)
     return result
 end
 
 """
-    divided_difference!(result::AbstractArray, f!, y::AbstractArray, x::Vector{Real})
+    div_diff!(result::AbstractArray, f!, y::AbstractArray, x::Vector{Real})
 
 Compute the divided difference `f![x_0,x_1,...,x_n]` and store the results in `result`, 
 assuming `f!` is called as `f!(y, x)`, where `y` is an array and f!(x_0) is stored in `y`.
 """
-@inline function divided_difference!(result::AbstractArray, f!::F,
-                                     y::AbstractArray{Y}, 
-                                     x::Vector{R}) where {F,Y,R<:Real}
+@inline function div_diff!(result::AbstractArray, f!::F,
+                           y::AbstractArray{Y}, 
+                           x::Vector{R}; kwargs...) where {F,Y,R<:Real}
     sort!(x)
     require_one_based_indexing(result, y)
     yfd = similar(y, FiniteDual{Y,length(x)})
-    f!(yfd, FiniteDual(x))
+    mat_fun!(f!, yfd, FiniteDual(x); kwargs...)
     v0(x) = value(x, 1)
     map!(v0, y, yfd)
     result = extract_DD!(result, yfd)
