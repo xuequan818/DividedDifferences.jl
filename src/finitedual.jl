@@ -222,6 +222,14 @@ for pred in [:>, :<, :(==), :>=, :<=]
                    build_pred_table(y, $pred.(x, values(y)))
 end
 
+# The prediction function `f` acts on a matrix `A` could be computed by 
+# solving the Sylvester equation for a 2×2 block matrix. 
+# Compute `f(A)` by the Schur decomposition `f(A) = Z*f(T)*Z'`.
+# First, reorder and divide `T` into a 2×2 matrix of upper triangular blocks, 
+# where one of the diagonal blocks has all eigenvalues meeting the prediction
+# and the other does not. The corresponding diagonal parts of `F := f(T)` are 
+# the unit and zero matrices. By the commutativity relation FT = TF, 
+# there is the Sylvester equation: `T11*F12 - F12*T22 + (T12*F22-F11*T12) = 0`.
 @inline function build_pred_table(x::FiniteDual{Tx,N}, pred_val) where {Tx,N}
     S = schur(table(x))
     block_size = pred_val[1] ? [sum(pred_val), N] : [N - sum(pred_val), N]
@@ -235,11 +243,11 @@ end
     F = diagm(fx)
     i = 1:block_size[1]
     j = block_size[1]+1:block_size[2]
-    Y = F[i, i] * T[i, j] - T[i, j] * F[j, j]
+    Y = T[i, j] * F[j, j] - F[i, i] * T[i, j]
 
-    # solve Tii*Fij + Fij*(-Tjj) + (-Y) = 0
+    # solve Tii*Fij - Fij*Tjj + Y = 0
     if length(i) > 1 || length(j) > 1
-        F[i, j] = sylvester(T[i, i], -T[j, j], -Y)
+        F[i, j] = sylvester(T[i, i], -T[j, j], Y)
     else
         F[i, j] = Y ./ (T[i, i] - T[j, j])
     end
