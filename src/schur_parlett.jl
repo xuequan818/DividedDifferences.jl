@@ -197,13 +197,10 @@ function block_parlett_recurrence!(f!::Function, F::AbstractArray{V},
     return F
 end
 
-#------------------------------------------#
-# Compute f(T),                            #
-# for the eigenvalues of T are very close. #
-# Directly use matrix functions in Julia   #
-# instead of Taylor expansion.			   #
-#------------------------------------------#
-
+# Compute f(T),                            
+# for the eigenvalues of T are very close. 
+# Directly use matrix functions in Julia   
+# instead of Taylor expansion.			   
 mat_fun_atomic_block(f, T::FiniteDual, ::Val{N}) where {N} = table(f(T))
 mat_fun_atomic_block(f, T::AbstractMatrix, ::Val{1}) = f.(T)
 
@@ -224,10 +221,7 @@ function mat_fun_atomic_block!(f!::Function, F::AbstractArray{V},
     return F
 end
 
-#------------------#
-# Compute f.(eigs) #
-#------------------#
-
+# Compute f.(eigs) 
 function fval(f::Function, Λ::Vector)
     try
         f.(Λ)
@@ -254,15 +248,17 @@ function fval!(f!::Function,
     return F
 end
 
-#------------------------------------------------------#
-# Map λ to an integer q, s.t. λ ∈ S_q,                 #
-# and satisfy the conditions: 						   #
-# 1) min{|λ - μ|: λ ∈ S_p, μ ∈ S_q, p ≠ q} > δ.		   #
-# 2) for S_p with |S_p| > 1, 						   #
-#    ∀ λ ∈ S_p, ∃ μ ∈ S_p and μ ≠ λ, s.t. |λ - μ| ≤ δ. #
-# For all S_q with |S_q| = 1, let q = 0.		       #
-#------------------------------------------------------#
 
+#-----------------------------#
+# Reorder Schur decomposition #
+#-----------------------------#
+
+# Map λ to an integer q, s.t. λ ∈ S_q,                 
+# and satisfy the conditions: 						   
+# 1) min{|λ - μ|: λ ∈ S_p, μ ∈ S_q, p ≠ q} > δ.		   
+# 2) for S_p with |S_p| > 1, 						   
+#    ∀ λ ∈ S_p, ∃ μ ∈ S_p and μ ≠ λ, s.t. |λ - μ| ≤ δ. 
+# For all S_q with |S_q| = 1, let q = 0.		       
 function split_eigs_into_blocks(eigs::Vector; δ::Real=0.1, kwargs...)
     # Sort the eigenvalues to quickly calculate distance
     sp = sortperm(eigs; rev=true)
@@ -288,15 +284,12 @@ function split_eigs_into_blocks(eigs::Vector; δ::Real=0.1, kwargs...)
     return split_map[sortperm(sp)]
 end
 
-#-------------------------------------------------------#
-# Find the swap strategy that converts                  #
-# an unordered sequence to a decreasing order sequence. #
-# Note that in each step, 								#
-# identical numbers are converted together.				#
-# E.g., (1,0,2,1,2,3,0,3) -> (1,1,0,2,2,3,0,3) 			#
-#       -> (2,2,1,1,0,3,0,3) -> (3,3,2,2,1,1,0,0).		#
-#-------------------------------------------------------#
-
+# Find the swap strategy that converts                  
+# an unordered sequence to a decreasing order sequence. 
+# Note that in each step, 								
+# identical numbers are converted together.				
+# E.g., (1,0,2,1,2,3,0,3) -> (1,1,0,2,2,3,0,3) 			
+#       -> (2,2,1,1,0,3,0,3) -> (3,3,2,2,1,1,0,0).		
 function swap_strategy(split)
     lmax = maximum(split)
     N = length(split)
@@ -332,11 +325,6 @@ function swap_strategy(split)
 
     return strategy, block_size
 end
-
-
-#---------------------------------# 
-# Reorder the Schur decomposition #
-#---------------------------------# 
 
 function reorder_schur(S::Schur, split)
     strategy, block_size = swap_strategy(split)
