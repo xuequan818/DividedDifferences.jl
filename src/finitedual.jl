@@ -110,103 +110,12 @@ end
 @inline Base.convert(::Type{FiniteDual{T,N}}, x::Number) where {T,N} = FiniteDual{N}(T(x))
 @inline Base.convert(::Type{FD}, x::FD) where {FD<:FiniteDual} = x
 
-###################
-# Matrix Function #
-###################
-
-"""
-    DividedDifferences.mat_fun(f, x::FiniteDual; ill_test::Bool=true, kwargs...)
-
-Compute the matrix function `f(x.DD_table)`. By default, 
-the calculation is first performed by Julia matrix operations 
-and then tested whether the result is ill-conditioned, 
-and if it is ill-conditioned, the calculation is performed by the schur parlett algorithm. 
-You can set `ill_test=false` to skip the testing and recalculation process.
-"""
-
-@inline function mat_fun(f::Function, x::FiniteDual; 
-                         ill_test::Bool=true, kwargs...)
-    F = f(x)
-    typeof(F) <: CustomSign && return F.result
-    
-    ill_test ? (try
-        _mat_fun(f, F, x, Val(ill_test))
-    catch e
-        if isa(e, TypeError)
-            f!(y, x) = copy!(y, f(x))
-            _mat_fun!(f!, F, x, Val(ill_test))
-        else
-            throw(e)
-        end
-    end) : F
-end
-
-@inline function _mat_fun(f::Function, F, x::FiniteDual, 
-                          ::Val{true}; kwargs...)
-    if isill_mat_fun(F) 
-        F = FiniteDual(mat_fun_schur_parlett(f, table(x); kwargs...))
-    end
-    return F
-end
-
-"""
-    DividedDifferences.mat_fun!(f!, F::AbstractArray{T}, x::FiniteDual; ill_test::Bool=true, kwargs...) where {T<:FiniteDual}
-
-Compute the matrix function `f(x.DD_table)`, and store the results in `F`. 
-See `DividedDifferences.mat_fun` for a description of possible keyword arguments.
-"""
-
-@inline function mat_fun!(f!::Function, F::AbstractArray{T},
-                          x::FiniteDual; ill_test::Bool=true,
-                          kwargs...) where {T<:FiniteDual}
-    f!(F, x)
-    typeof(F) <: CustomSign && return F.result
-    ill_test && _mat_fun!(f!, F, x, Val(ill_test); kwargs...)
-    return F
-end
-
-@inline function _mat_fun!(f!::Function, F::AbstractArray{T}, 
-                           x::FiniteDual, ::Val{true}; 
-                           kwargs...) where {T<:FiniteDual}
-    select = isill_mat_fun(F)
-    if any(isone, select)
-        f!_select(y, x) = begin 
-            f!(y, x)
-            y[select]
-        end
-        F_select = Array.(table.(F[select]))
-        F[select] = FiniteDual.(mat_fun_schur_parlett!(f!_select, F_select, 
-                    table(x); f!_T=eltype(T), f!_S=size(F), kwargs...))
-    end
-    return F
-end
-
-@inline function isill_mat_fun(F::FiniteDual{V}) where {V}
-    ill_cond = sqrt(eps(real(float(oneunit(V)))))
-    Tf = table(F)
-    length(F) == 2 ? false : ((any(isnan, Tf) || any(isinf, Tf) || 
-                 cond(Tf) > ill_cond) ? true : false)
-end
-@inline isill_mat_fun(F::Number) = false
-
-@inline function isill_mat_fun(F::AbstractArray{V}) where {V<:FiniteDual}
-    ill_cond = sqrt(eps(real(float(oneunit(eltype(V))))))
-    Tf = table.(F)
-    FBool = Array{Bool}(undef, size(Tf))
-    if length(V) > 2
-        for (iy, y) in enumerate(Tf)
-            FBool[iy] = (any(isnan, y) || any(isinf, y) || cond(y) > ill_cond) && 1
-        end
-    end
-    FBool
-end
-
 #####################
 # Generic Functions #
 #####################
 
 @inline Base.zero(x::FiniteDual) = zero(typeof(x))
-@inline Base.zero(::Type{FiniteDual{T,N}}) where {T,N} = FiniteDual{N}(T(0))
+@inline Base.zero(::Type{FiniteDual{T,N}}) where {T,N} = FiniteDual(zeros(SMatrix{N,N,T}))
 
 @inline Base.one(x::FiniteDual) = one(typeof(x))
 @inline Base.one(::Type{FiniteDual{T,N}}) where {T,N} = FiniteDual{N}(T(1))
@@ -214,7 +123,7 @@ end
 # Predicates #
 #------------#
 
-@inline isconstant(x::FiniteDual) = values(x) == value(x, 1) * I
+@inline isconstant(x::FiniteDual) = allequal(values(x))
 
 @inline Base.iszero(x::FiniteDual) = iszero(table(x))
 
@@ -257,6 +166,89 @@ end
 
     return FiniteDual(Z * F * Z')
 end
+
+####################
+# Matrix Functions #
+####################
+
+"""
+    DividedDifferences.mat_fun(f, x::FiniteDual; ill_test::Bool=true, kwargs...)
+
+Compute the matrix function `f(x.DD_table)`. By default, 
+the calculation is first performed by Julia matrix operations 
+and then tested whether the result is ill-conditioned, 
+and if it is ill-conditioned, the calculation is performed by the schur parlett algorithm. 
+You can set `ill_test=false` to skip the testing and recalculation process.
+"""
+
+@inline function mat_fun(f::Function, x::FiniteDual{T,N};
+                         ill_test::Bool=true, 
+                         kwargs...) where {T,N}
+    F = f(x)
+    issign(F) && return extract_sign(F)
+    N == 2 || isconstant(x) && return F
+    
+    ill_test ? (
+        try
+            _mat_fun(f, F, x, Val(ill_test))
+        catch e
+            if isa(e, TypeError)
+                f!(y, x) = copy!(y, f(x))
+                _mat_fun!(f!, F, x, Val(ill_test))
+            else
+                throw(e)
+            end
+        end
+    ) : return F
+end
+
+@inline function _mat_fun(f::Function, F, x::FiniteDual,
+    ::Val{true}; kwargs...)
+    if isill_mat_fun(F)
+        F = FiniteDual(mat_fun_schur_parlett(f, table(x); kwargs...))
+    end
+    return F
+end
+
+"""
+    DividedDifferences.mat_fun!(f!, F::AbstractArray{T}, x::FiniteDual; ill_test::Bool=true, kwargs...) where {T<:FiniteDual}
+
+Compute the matrix function `f(x.DD_table)`, and store the results in `F`. 
+See `DividedDifferences.mat_fun` for a description of possible keyword arguments.
+"""
+
+@inline function mat_fun!(f!::Function, F::AbstractArray,
+                          x::FiniteDual{T,N}; ill_test::Bool=true,
+                          kwargs...) where {T,N}
+    f!(F, x)
+    N == 2 || isconstant(x) && return F
+
+    ill_test ? _mat_fun!(f!, F, x, Val(ill_test); kwargs...) : F
+end
+
+@inline function _mat_fun!(f!::Function, F::AbstractArray{T},
+                           x::FiniteDual, ::Val{true};
+                           kwargs...) where {T<:FiniteDual}
+    select = isill_mat_fun(F)
+    if any(isone, select)
+        f!_select(y, x) = begin
+            f!(y, x)
+            y[select]
+        end
+        F_select = Array.(table.(F[select]))
+        F[select] = FiniteDual.(mat_fun_schur_parlett!(f!_select, F_select,
+            table(x); f!_T=eltype(T), f!_S=size(F), kwargs...))
+    end
+    return F
+end
+
+@inline function isill_mat_fun(F::FiniteDual{V}) where {V}
+    ill_cond = sqrt(eps(real(float(oneunit(V)))))
+    Tf = table(F)
+    (any(isnan, Tf) || any(isinf, Tf) || cond(Tf) > ill_cond) ? true : false
+end
+@inline isill_mat_fun(F::Number) = false
+@inline isill_mat_fun(F::AbstractArray) = map(x -> isill_mat_fun(x), F)
 
 ###################################
 # General Mathematical Operations #
@@ -315,13 +307,23 @@ end
 @inline ^(x::Number, y::FiniteDual) = FiniteDual(^(x, Array(table(y))))
 @inline ^(x::FiniteDual, y::FiniteDual) = exp(y * log(x))
 
-################################
-# Function defined by branches #
-################################
+#################################
+# Functions defined by branches #
+#################################
 
 struct CustomSign 
     result::FiniteDual
 end
+
+issign(::CustomSign) = true
+issign(::FiniteDual) = false
+issign(::Number) = false
+issign(X::AbstractArray) = prod(map(x -> issign(x), X))
+
+extract_sign(x::CustomSign) = x.result
+extract_sign(x::FiniteDual) = x
+extract_sign(x::Number) = x
+extract_sign(X::AbstractArray) = map(x -> extract_sign(x), X)
 
 """
     custom_sign(x; fl::Function, fc::Function, fr::Function, a=0.0)

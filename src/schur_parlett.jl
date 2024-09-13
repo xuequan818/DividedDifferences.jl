@@ -121,9 +121,8 @@ function block_parlett_recurrence(f::Function, T::AbstractMatrix,
     @assert istriu(T)
 
     F = fill!(similar(T, typeof(f(T[1]))), 0)
-    block = vcat(0, block_size)
-    ind(i) = block[i]+1:block[i+1]
-    for j = 1:length(block)-1
+    ind(i) = block_size[i]+1:block_size[i+1]
+    for j = 1:length(block_size)-1
         indj = ind(j)
         lj = length(indj)
         Tjj = T[indj, indj]
@@ -157,10 +156,10 @@ function block_parlett_recurrence!(f!::Function, F::AbstractArray{V},
                                   T::AbstractMatrix,
                                   block_size::Vector{<:Integer};
                                   kwargs...) where {V<:AbstractMatrix}
+    @assert istriu(T)
 
-    block = vcat(0, block_size)
-    ind(i) = block[i]+1:block[i+1]
-    for j = 1:length(block)-1
+    ind(i) = block_size[i]+1:block_size[i+1]
+    for j = 1:length(block_size)-1
         indj = ind(j)
         lj = length(indj)
         Tjj = T[indj, indj]
@@ -266,22 +265,22 @@ end
 
 function split_eigs_into_blocks(eigs::Vector; δ::Real=0.1, kwargs...)
     # Sort the eigenvalues to quickly calculate distance
-    sp = sortperm(eigs)
+    sp = sortperm(eigs; rev=true)
     eigs_sp = eigs[sp]
     N = length(eigs)
-    dist = SVector{N - 1}(eigs_sp[2:end] - eigs_sp[1:end-1])
+    dist = SVector{N - 1}(eigs_sp[1:end-1] - eigs_sp[2:end])
 
     minimum(dist) > δ && return 0
 
     split_map = Int[]
     split_pos = vcat(0, findall(x -> x > δ, dist), N) # find all split positions
+    dvec = split_pos[2:end] - split_pos[1:end-1]
     l = 1
-    for i = 1:length(split_pos)-1
-        dvec = dist[split_pos[i]+1:split_pos[i+1]-1]
-        if length(dvec) == 0
+    for di in dvec
+        if di == 1
             push!(split_map, 0)
         else
-            append!(split_map, l * ones(Int, length(dvec) + 1))
+            append!(split_map, l * ones(Int, di))
             l += 1
         end
     end
@@ -301,8 +300,21 @@ end
 function swap_strategy(split)
     lmax = maximum(split)
     N = length(split)
+
+    if issorted(split; rev=true)
+        count = findlast(isequal(lmax), split)
+        block_size = [0, count]
+        for l = lmax:-1:2
+            count += findlast(isequal(l - 1), split) - findlast(isequal(l), split)
+            push!(block_size, count)
+        end
+        append!(block_size, collect(block_size[end]+1:N))
+        return false, block_size
+    end
+
     strategy = Vector{Bool}[]
-    block_size = Int[]
+    count = N - length(findall(iszero, split))
+    block_size = collect(count:N)
     shift = 0
     for l = 1:lmax
         st_l = zeros(Bool, N)
@@ -310,15 +322,17 @@ function swap_strategy(split)
         st_l[swap_index.+shift] .= 1
         push!(strategy, st_l)
 
-        shift += length(swap_index)
-        push!(block_size, shift)
+        sl = length(swap_index)
+        shift += sl
+        count -= sl
+        pushfirst!(block_size, count)
 
         split = split[setdiff(1:length(split), swap_index)]
     end
-    append!(block_size, collect(block_size[end]+1:N))
 
     return strategy, block_size
 end
+
 
 #---------------------------------# 
 # Reorder the Schur decomposition #
@@ -326,8 +340,10 @@ end
 
 function reorder_schur(S::Schur, split)
     strategy, block_size = swap_strategy(split)
-    for st in strategy
-        ordschur!(S, st)
+    if strategy != false
+        for st in strategy
+            ordschur!(S, st)
+        end
     end
     return S, block_size
 end

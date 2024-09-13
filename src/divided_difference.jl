@@ -82,7 +82,7 @@ end
 
 @inline extract_DD(y::Real)          = zero(y)
 @inline extract_DD(y::Complex)       = zero(y)
-@inline extract_DD(y::FiniteDual)    = y.DD_table[1, length(y)]
+@inline extract_DD(y::FiniteDual)    = table(y)[1, length(y)]
 @inline extract_DD(y::AbstractArray) = map(dd -> extract_DD(dd), y)
 
 # mutating #
