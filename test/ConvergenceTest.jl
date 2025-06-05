@@ -6,21 +6,15 @@ using DiffTests
 using ForwardDiff
 
 # compute the n-th order derivative
-function derivative_nth_order(f::Function, x::R, n::Integer) where {R<:Real}
-    D1 = x -> ForwardDiff.derivative(f, x)
-    Ds = Function[D1]
-    for i = 2:n
-        push!(Ds, x -> ForwardDiff.derivative(Ds[i-1], x))
-    end
-
-    return Ds[end](x)
+function nth_derivative(f::Function, x::Number, n::Integer)
+    iszero(n) ? f(x) : ForwardDiff.derivative(x -> nth_derivative(f, x, n-1), x)
 end
 
 const x, N = 0.1, 4
 
 @testset "$f" for f in DiffTests.NUMBER_TO_NUMBER_FUNCS
     for i = 2:N
-        d = derivative_nth_order(f, x, i - 1)
+        d = nth_derivative(f, x, i - 1)
         dd = div_diff(f, x * ones(i))
         @test isapprox(d / prod(1:i-1), dd)
     end
@@ -28,7 +22,7 @@ end
 
 @testset "$f" for f in DiffTests.NUMBER_TO_ARRAY_FUNCS
     for i = 2:N
-        d = derivative_nth_order(f, x, i - 1)
+        d = nth_derivative(f, x, i - 1)
         dd = div_diff(f, x * ones(i))
         @test isapprox(d / prod(1:i-1), dd)
 
@@ -45,7 +39,7 @@ end
 
     for i = 2:N
         v = f(x)
-        d = derivative_nth_order(f, x, i - 1)
+        d = nth_derivative(f, x, i - 1)
         dd = div_diff(f, x * ones(i))
         @test isapprox(d / prod(1:i-1), dd)
 
@@ -64,7 +58,7 @@ end
 @testset "spectial function defined by branches" begin
     f(x) = custom_sign(x; fl=xl -> exp(1 / (xl^2 + 1)), fc=xc -> 0, fr=xr -> cos(xr) - 1, a=3)
     for i = 2:N
-        d = derivative_nth_order(f, x, i - 1)
+        d = nth_derivative(f, x, i - 1)
         dd = div_diff(f, x * ones(i))
         @test isapprox(d / prod(1:i-1), dd)
     end
@@ -73,7 +67,7 @@ end
 @testset "heaviside step function" begin
     f(x) = heaviside(x)
     for i = 2:N
-        d = derivative_nth_order(f, x, i - 1)
+        d = nth_derivative(f, x, i - 1)
         dd = div_diff(f, x * ones(i))
         @test isapprox(d / prod(1:i-1), dd)
     end
@@ -82,7 +76,7 @@ end
 @testset "complex output" begin
     f(x) = (1 + im) * x
     for i = 2:N
-        d = derivative_nth_order(f, x, i - 1)
+        d = nth_derivative(f, x, i - 1)
         dd = div_diff(f, x * ones(i))
         @test isapprox(d / prod(1:i-1), dd)
     end

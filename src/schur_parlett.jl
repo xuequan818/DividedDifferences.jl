@@ -261,7 +261,8 @@ end
 # For all S_q with |S_q| = 1, let q = 0.		       
 function split_eigs_into_blocks(eigs::Vector; δ::Real=0.1, kwargs...)
     # Sort the eigenvalues to quickly calculate distance
-    sp = sortperm(eigs; rev=true)
+    sp = sortperm(eigs; rev=true) # real eigs
+    # TODO: how to sort complex eigs?
     eigs_sp = eigs[sp]
     N = length(eigs)
     dist = SVector{N - 1}(eigs_sp[1:end-1] - eigs_sp[2:end])

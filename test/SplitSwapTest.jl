@@ -9,9 +9,7 @@ import DividedDifferences: split_eigs_into_blocks, swap_strategy
 
     # distinct points
 	distinct_points = collect(1:10)
-	for δ in dist
-        @test split_eigs_into_blocks(distinct_points) == 0
-	end
+    @test split_eigs_into_blocks(distinct_points) == 0
 
 	# close points
     close_points = [-0.2, -0.16, -0.1, -0.1, 0, 0.2, 0.36, 0.4]
