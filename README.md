@@ -1,4 +1,8 @@
-[!WARNING] This package is deprecated and no longer maintained! Please move to [MatrixFuns.jl](https://github.com/xuequan818/MatrixFuns.jl).
+
+
+<div style="padding: 10px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; margin: 10px 0;">
+⚠️ WARNING: This package is deprecated and no longer maintained! Please move to https://github.com/xuequan818/MatrixFuns.jl.
+</div>
 
 [![Build Status](https://github.com/xuequan818/DividedDifferences.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/xuequan818/DividedDifferences.jl/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/xuequan818/DividedDifferences.jl/graph/badge.svg?token=XNA1NK3RI8)](https://codecov.io/gh/xuequan818/DividedDifferences.jl)
