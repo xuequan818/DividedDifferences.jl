@@ -1,3 +1,5 @@
+[!WARNING] This package is deprecated and no longer maintained! Please move to [MatrixFuns.jl](https://github.com/xuequan818/MatrixFuns.jl).
+
 [![Build Status](https://github.com/xuequan818/DividedDifferences.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/xuequan818/DividedDifferences.jl/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/xuequan818/DividedDifferences.jl/graph/badge.svg?token=XNA1NK3RI8)](https://codecov.io/gh/xuequan818/DividedDifferences.jl)
 
